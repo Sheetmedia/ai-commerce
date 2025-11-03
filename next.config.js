@@ -17,8 +17,4 @@ const nextConfig = {
   },
 }
 
-<<<<<<< HEAD
 module.exports = nextConfig;
-=======
-module.exports = nextConfig;
->>>>>>> 439cfb979d4c7259c31b187d06bcfef88d7a5637
