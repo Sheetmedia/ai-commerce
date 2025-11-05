@@ -77,9 +77,14 @@ export default function DashboardPage() {
       setProducts(productsData.slice(0, 3));
 
       // Fetch recent insights (top 3)
-      const insightsUrl = `/api/insights?limit=3&userId=${user.id}`;
+      const insightsUrl = `/api/insights?limit=3`;
       console.log('Fetching insights from:', insightsUrl);
-      const response = await fetch(insightsUrl);
+      const response = await fetch(insightsUrl, {
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${user.id}`, // Using user ID as token for now
+        },
+      });
       const insightsData = await response.json();
       setInsights(insightsData.data || []);
 
