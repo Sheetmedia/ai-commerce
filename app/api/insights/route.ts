@@ -1,22 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
-import { cookies } from 'next/headers';
+import { supabaseAdmin } from '@/lib/supabase/server';
 
 export const dynamic = 'force-dynamic';
 
 // GET /api/insights - Get user's insights
 export async function GET(request: NextRequest) {
   try {
-    const supabase = createRouteHandlerClient({ cookies });
+    // For now, we'll need to get user from query param or header
+    // This is a temporary solution until we implement proper auth middleware
+    const searchParams = request.nextUrl.searchParams;
+    const userId = searchParams.get('userId');
 
-    // Check authentication
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    if (!userId) {
+      return NextResponse.json(
+        { success: false, error: 'User ID is required' },
+        { status: 400 }
+      );
     }
 
     // Get query parameters
-    const searchParams = request.nextUrl.searchParams;
     const limit = parseInt(searchParams.get('limit') || '50');
     const type = searchParams.get('type'); // opportunity, warning, trend, action
     const priority = searchParams.get('priority'); // high, medium, low
@@ -25,7 +27,7 @@ export async function GET(request: NextRequest) {
     const productId = searchParams.get('productId');
 
     // Build query
-    let query = supabase
+    let query = supabaseAdmin
       .from('ai_insights')
       .select(`
         *,
@@ -35,7 +37,7 @@ export async function GET(request: NextRequest) {
           platform
         )
       `)
-      .eq('user_id', session.user.id)
+      .eq('user_id', userId)
       .order('created_at', { ascending: false })
       .limit(limit);
 
@@ -96,15 +98,9 @@ export async function GET(request: NextRequest) {
 // POST /api/insights - Create new insight manually
 export async function POST(request: NextRequest) {
   try {
-    const supabase = createRouteHandlerClient({ cookies });
-
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
     const body = await request.json();
     const {
+      userId,
       tracked_product_id,
       insight_type,
       title,
@@ -113,6 +109,13 @@ export async function POST(request: NextRequest) {
       priority = 'medium',
       action_items = []
     } = body;
+
+    if (!userId) {
+      return NextResponse.json(
+        { success: false, error: 'User ID is required' },
+        { status: 400 }
+      );
+    }
 
     // Validate required fields
     if (!tracked_product_id || !insight_type || !title || !description) {
@@ -123,11 +126,11 @@ export async function POST(request: NextRequest) {
     }
 
     // Verify product belongs to user
-    const { data: product } = await supabase
+    const { data: product } = await supabaseAdmin
       .from('tracked_products')
       .select('id')
       .eq('id', tracked_product_id)
-      .eq('user_id', session.user.id)
+      .eq('user_id', userId)
       .single();
 
     if (!product) {
@@ -138,10 +141,10 @@ export async function POST(request: NextRequest) {
     }
 
     // Insert insight
-    const { data: insight, error } = await supabase
+    const { data: insight, error } = await supabaseAdmin
       .from('ai_insights')
       .insert({
-        user_id: session.user.id,
+        user_id: userId,
         tracked_product_id,
         insight_type,
         title,

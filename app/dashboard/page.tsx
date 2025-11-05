@@ -5,6 +5,7 @@ import { useAuth } from '@/lib/providers/AuthProvider';
 import { DatabaseHelpers } from '@/lib/db/helpers';
 import { TrackedProduct } from '@/lib/types/database';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import {
   ShoppingCart,
   DollarSign,
@@ -50,26 +51,35 @@ interface AIInsight {
 }
 
 export default function DashboardPage() {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const [loading, setLoading] = useState(true);
+  const router = useRouter();
+
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
   const [insights, setInsights] = useState<AIInsight[]>([]);
 
   const fetchDashboardData = useCallback(async () => {
+    if (!user?.id) {
+      console.log('No user ID available, skipping dashboard data fetch');
+      return;
+    }
+
     try {
       setLoading(true);
 
       // Fetch stats
-      const statsData = await DatabaseHelpers.getDashboardStats(user!.id);
+      const statsData = await DatabaseHelpers.getDashboardStats(user.id);
       setStats(statsData);
 
       // Fetch recent products (top 3)
-      const productsData = await DatabaseHelpers.getUserProducts(user!.id);
+      const productsData = await DatabaseHelpers.getUserProducts(user.id);
       setProducts(productsData.slice(0, 3));
 
       // Fetch recent insights (top 3)
-      const response = await fetch('/api/insights?limit=3');
+      const insightsUrl = `/api/insights?limit=3&userId=${user.id}`;
+      console.log('Fetching insights from:', insightsUrl);
+      const response = await fetch(insightsUrl);
       const insightsData = await response.json();
       setInsights(insightsData.data || []);
 
@@ -85,6 +95,12 @@ export default function DashboardPage() {
       fetchDashboardData();
     }
   }, [user, fetchDashboardData]);
+
+  // Redirect if not authenticated
+  if (!user && !authLoading) {
+    router.push('/auth/login');
+    return null;
+  }
 
   if (loading) {
     return (

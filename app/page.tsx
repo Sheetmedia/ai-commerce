@@ -1,6 +1,8 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useAuth } from '@/lib/providers/AuthProvider';
+import { useRouter } from 'next/navigation';
 
 export const dynamic = 'force-dynamic'
 import { Zap, TrendingUp, Target, Brain, Clock, DollarSign, CheckCircle, ArrowRight, Star, Sparkles, BarChart3, Shield, ChevronDown } from 'lucide-react';
@@ -171,9 +173,18 @@ function PricingCard({ plan }: { plan: any }) {
 }
 
 export default function LandingPage() {
+  const { user, loading: authLoading } = useAuth();
+  const router = useRouter();
   const [email, setEmail] = useState('');
   const [isMegaMenuOpen, setIsMegaMenuOpen] = useState(false);
   const [language, setLanguage] = useState('vi');
+
+  // Redirect authenticated users to dashboard
+  useEffect(() => {
+    if (user && !authLoading) {
+      router.push('/dashboard');
+    }
+  }, [user, authLoading, router]);
 
   return (
     <div className="min-h-screen bg-white">
