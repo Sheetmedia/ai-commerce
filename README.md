@@ -2,7 +2,7 @@
 
 > E-commerce Analytics powered by AI - A smarter alternative to Metric.vn
 
-[![CI](https://github.com/yourusername/ai-commerce/workflows/CI/badge.svg)](https://github.com/yourusername/ai-commerce/actions)
+[![CI](https://github.com/Sheetmedia/ai-commerce/workflows/CI/badge.svg)](https://github.com/Sheetmedia/ai-commerce/actions)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 ## 🚀 Features
@@ -34,7 +34,7 @@
 ### Installation
 ```bash
 # Clone repository
-git clone https://github.com/yourusername/ai-commerce.git
+git clone https://github.com/Sheetmedia/ai-commerce.git
 cd ai-commerce
 
 # Install dependencies
