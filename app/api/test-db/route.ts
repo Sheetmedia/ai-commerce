@@ -3,24 +3,47 @@ import { supabaseAdmin } from '@/lib/supabase/server';
 
 export async function GET() {
   try {
-    // Test 1: Create test user profile
-    const { data: profile, error: profileError } = await supabaseAdmin
+    // Test 1: Check if test profile exists, if not create it
+    let { data: existingProfile, error: checkError } = await supabaseAdmin
       .from('profiles')
-      .insert({
-        id: '00000000-0000-0000-0000-000000000001',
-        email: 'test@example.com',
-        full_name: 'Test User',
-        plan: 'free'
-      })
-      .select()
+      .select('*')
+      .eq('email', 'demo@aicommerce.vn')
       .single();
 
-    if (profileError) throw profileError;
+    let profile;
+    if (checkError && checkError.code === 'PGRST116') {
+      // Profile doesn't exist, create it using auth.users
+      const { data: authUser, error: authError } = await supabaseAdmin.auth.admin.createUser({
+        email: 'demo@aicommerce.vn',
+        password: 'demo123456',
+        email_confirm: true
+      });
 
-    // Test 2: Add tracked product
+      if (authError) throw authError;
+
+      const { data: newProfile, error: profileError } = await supabaseAdmin
+        .from('profiles')
+        .insert({
+          id: authUser.user.id,
+          email: 'demo@aicommerce.vn',
+          full_name: 'Test User',
+          plan: 'free'
+        })
+        .select()
+        .single();
+
+      if (profileError) throw profileError;
+      profile = newProfile;
+    } else if (checkError) {
+      throw checkError;
+    } else {
+      profile = existingProfile;
+    }
+
+    // Test 2: Add tracked product (with conflict handling)
     const { data: product, error: productError } = await supabaseAdmin
       .from('tracked_products')
-      .insert({
+      .upsert({
         user_id: profile.id,
         platform: 'tiktok',
         product_id: 'test123',
@@ -28,21 +51,25 @@ export async function GET() {
         product_name: 'Test Product',
         current_price: 199000,
         current_sales: 100
+      }, {
+        onConflict: 'user_id,platform,product_id'
       })
       .select()
       .single();
 
     if (productError) throw productError;
 
-    // Test 3: Add snapshot
+    // Test 3: Add snapshot (with conflict handling)
     const { data: snapshot, error: snapshotError} = await supabaseAdmin
       .from('product_snapshots')
-      .insert({
+      .upsert({
         tracked_product_id: product.id,
         price: 199000,
         sales_count: 100,
         rating: 4.5,
         snapshot_date: new Date().toISOString().split('T')[0]
+      }, {
+        onConflict: 'tracked_product_id,snapshot_date'
       })
       .select()
       .single();

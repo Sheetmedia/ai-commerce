@@ -8,13 +8,18 @@ const nextConfig = {
       'laz-img-cdn.alicdn.com',
     ],
   },
-  experimental: {
-    serverActions: true,
-  },
   webpack: (config) => {
     config.externals = [...config.externals, 'canvas', 'jsdom'];
+    config.resolve.fallback = {
+      ...config.resolve.fallback,
+      punycode: false,
+    };
     return config;
   },
+  experimental: {
+    serverComponentsExternalPackages: ['canvas', 'jsdom'],
+  },
+  staticPageGenerationTimeout: 300, // Increase timeout to 5 minutes
 }
 
 module.exports = nextConfig;
