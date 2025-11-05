@@ -58,7 +58,7 @@ const testimonials = [
     name: "Trần Văn Hùng",
     role: "Fashion Brand",
     avatar: "👨",
-    text: "Từng dùng Metric.vn nhưng chuyển sang đây vì rẻ hơn 70% mà insights thực chiến hơn nhiều.",
+    text: "Từng dùng Metric nhưng chuyển sang đây vì rẻ hơn 70% mà insights thực chiến hơn nhiều.",
     rating: 5
   },
   {
@@ -234,7 +234,6 @@ export default function LandingPage() {
             </div>
             <a href="#pricing" className="text-gray-600 hover:text-purple-600 transition-colors">Pricing</a>
             <a href="#testimonials" className="text-gray-600 hover:text-purple-600 transition-colors">Testimonials</a>
-            <a href="/api/test-db" className="text-gray-600 hover:text-purple-600 transition-colors">API Test</a>
           </nav>
           <div className="flex items-center space-x-4">
             <select
@@ -259,7 +258,7 @@ export default function LandingPage() {
           <div className="text-center max-w-4xl mx-auto">
             <div className="inline-flex items-center gap-2 bg-purple-100 text-purple-700 px-4 py-2 rounded-full text-sm font-medium mb-6">
               <Sparkles className="w-4 h-4" />
-              Cạnh tranh thông minh với Metric.vn
+              Cạnh tranh thông minh với Metric
             </div>
 
             <h1 className="text-5xl lg:text-7xl font-bold text-slate-900 mb-6 leading-tight">
@@ -374,7 +373,7 @@ export default function LandingPage() {
         <div className="max-w-5xl mx-auto px-6">
           <div className="text-center mb-12">
             <h2 className="text-4xl font-bold text-slate-900 mb-4">
-              So Sánh Với Metric.vn
+              So Sánh Với Metric
             </h2>
             <p className="text-xl text-slate-600">
               Giá rẻ hơn, features nhiều hơn, AI thông minh hơn
@@ -386,7 +385,7 @@ export default function LandingPage() {
               <thead className="bg-slate-100">
                 <tr>
                   <th className="px-6 py-4 text-left text-slate-900 font-bold">Feature</th>
-                  <th className="px-6 py-4 text-center text-slate-900 font-bold">Metric.vn</th>
+                  <th className="px-6 py-4 text-center text-slate-900 font-bold">Metric</th>
                   <th className="px-6 py-4 text-center bg-gradient-to-r from-purple-500 to-pink-500 text-white font-bold">
                     AI Commerce
                   </th>

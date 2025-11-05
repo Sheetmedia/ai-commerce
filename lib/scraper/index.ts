@@ -112,45 +112,86 @@ export class ProductScraper {
 
       const $ = cheerio.load(html);
 
-      // Extract price
+      // Extract price - Lazada uses multiple price selectors
       let price = null;
-      const priceText = $('span.pdp-price_color_orange').text() ||
-                       $('span.pdp-price').text() ||
-                       $('[data-qa-locator="product-price"]').text();
+      const priceSelectors = [
+        'span.pdp-price_color_orange',
+        'span.pdp-price',
+        '[data-qa-locator="product-price"]',
+        '.pdp-price_color_orange',
+        '.pdp-price',
+        'span.price'
+      ];
 
-      if (priceText) {
-        const priceMatch = priceText.replace(/[^\d]/g, '');
-        price = priceMatch ? parseInt(priceMatch) : null;
+      for (const selector of priceSelectors) {
+        const priceText = $(selector).first().text().trim();
+        if (priceText) {
+          const priceMatch = priceText.replace(/[^\d]/g, '');
+          if (priceMatch) {
+            price = parseInt(priceMatch);
+            break;
+          }
+        }
       }
 
-      // Extract sales
+      // Extract sales - Lazada sales count
       let sales = null;
-      const salesText = $('span.pdp-sold-count').text() ||
-                       $('[data-qa-locator="product-sold-count"]').text();
+      const salesSelectors = [
+        'span.pdp-sold-count',
+        '[data-qa-locator="product-sold-count"]',
+        '.pdp-sold-count',
+        'span.sold-count'
+      ];
 
-      if (salesText) {
-        const salesMatch = salesText.replace(/[^\d]/g, '');
-        sales = salesMatch ? parseInt(salesMatch) : null;
+      for (const selector of salesSelectors) {
+        const salesText = $(selector).first().text().trim();
+        if (salesText) {
+          const salesMatch = salesText.replace(/[^\d]/g, '');
+          if (salesMatch) {
+            sales = parseInt(salesMatch);
+            break;
+          }
+        }
       }
 
       // Extract rating
       let rating = null;
-      const ratingText = $('span.score-average').text() ||
-                        $('[data-qa-locator="product-rating"]').text();
+      const ratingSelectors = [
+        'span.score-average',
+        '[data-qa-locator="product-rating"]',
+        '.score-average',
+        'span.rating-score'
+      ];
 
-      if (ratingText) {
-        const ratingMatch = ratingText.match(/(\d+\.?\d*)/);
-        rating = ratingMatch ? parseFloat(ratingMatch[1]) : null;
+      for (const selector of ratingSelectors) {
+        const ratingText = $(selector).first().text().trim();
+        if (ratingText) {
+          const ratingMatch = ratingText.match(/(\d+\.?\d*)/);
+          if (ratingMatch) {
+            rating = parseFloat(ratingMatch[1]);
+            break;
+          }
+        }
       }
 
       // Extract reviews count
       let reviews = null;
-      const reviewsText = $('span.count').text() ||
-                         $('[data-qa-locator="product-reviews-count"]').text();
+      const reviewsSelectors = [
+        'span.count',
+        '[data-qa-locator="product-reviews-count"]',
+        '.review-count',
+        'span.review-count'
+      ];
 
-      if (reviewsText) {
-        const reviewsMatch = reviewsText.replace(/[^\d]/g, '');
-        reviews = reviewsMatch ? parseInt(reviewsMatch) : null;
+      for (const selector of reviewsSelectors) {
+        const reviewsText = $(selector).first().text().trim();
+        if (reviewsText) {
+          const reviewsMatch = reviewsText.replace(/[^\d]/g, '');
+          if (reviewsMatch) {
+            reviews = parseInt(reviewsMatch);
+            break;
+          }
+        }
       }
 
       return {

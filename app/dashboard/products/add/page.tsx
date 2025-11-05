@@ -48,32 +48,76 @@ export default function AddProductPage() {
     try {
       // Step 1: Scraping
       setStep('scraping');
-      await new Promise(resolve => setTimeout(resolve, 1500)); // Simulate delay
 
-      const response = await fetch('/api/products', {
+      const scrapeResponse = await fetch('/api/scrape', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: user?.id, productData: { product_url: url, platform, product_id: 'temp_' + Date.now(), product_name: 'Loading...' } })
+        body: JSON.stringify({ url, platform })
       });
 
-      const data = await response.json();
+      const scrapeData = await scrapeResponse.json();
 
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to add product');
+      if (!scrapeResponse.ok) {
+        throw new Error(scrapeData.error || 'Failed to scrape product data');
       }
 
-      setProductData(data.data);
+      const scrapedProduct = scrapeData.data;
 
-      // Step 2: AI Analysis
+      // Extract product_id from URL
+      let productId = null;
+      if (platform === 'tiktok') {
+        const match = url.match(/\/view\/product\/(\d+)/);
+        productId = match ? match[1] : null;
+      } else if (platform === 'shopee') {
+        const match = url.match(/\.(\d+)\.(\d+)/);
+        productId = match ? `${match[1]}.${match[2]}` : null;
+      } else if (platform === 'lazada') {
+        const match = url.match(/\/products\/.*-i(\d+)-s\d+/);
+        productId = match ? match[1] : null;
+      } else if (platform === 'tiki') {
+        const match = url.match(/-p(\d+)\.html/);
+        productId = match ? match[1] : null;
+      }
+
+      // Step 2: Create Product
+      const createResponse = await fetch('/api/products', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: user?.id,
+          productData: {
+            product_url: url,
+            platform,
+            product_id: productId,
+            product_name: scrapedProduct.name,
+            current_price: scrapedProduct.price,
+            current_sales: scrapedProduct.sales,
+            current_rating: scrapedProduct.rating,
+            current_reviews: scrapedProduct.reviews,
+            category: 'General', // Default category
+            is_active: true
+          }
+        })
+      });
+
+      const createData = await createResponse.json();
+
+      if (!createResponse.ok) {
+        throw new Error(createData.error || 'Failed to create product');
+      }
+
+      setProductData(createData.data);
+
+      // Step 3: AI Analysis
       setStep('analyzing');
       await new Promise(resolve => setTimeout(resolve, 2000)); // Simulate AI processing
 
-      // Step 3: Done
+      // Step 4: Done
       setStep('done');
 
       // Redirect after 2 seconds
       setTimeout(() => {
-        router.push(`/dashboard/products/${data.data.id}`);
+        router.push(`/dashboard/products/${createData.data.id}`);
       }, 2000);
 
     } catch (err: any) {

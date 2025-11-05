@@ -41,11 +41,28 @@ export default function InsightsPage() {
   const fetchInsights = useCallback(async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/insights');
+
+      // Get the current session token
+      const { supabase } = await import('@/lib/supabase/client');
+      const { data: { session } } = await supabase.auth.getSession();
+
+      if (!session?.access_token) {
+        console.error('No session token available');
+        setLoading(false);
+        return;
+      }
+
+      const response = await fetch('/api/insights', {
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+      });
       const data = await response.json();
 
       if (data.success) {
         setInsights(data.data);
+      } else {
+        console.error('Failed to fetch insights:', data.error);
       }
     } catch (error) {
       console.error('Error fetching insights:', error);
@@ -107,13 +124,25 @@ export default function InsightsPage() {
 
   const handleMarkAsRead = async (id: string) => {
     try {
+      // Get the current session token
+      const { supabase } = await import('@/lib/supabase/client');
+      const { data: { session } } = await supabase.auth.getSession();
+
+      if (!session?.access_token) {
+        console.error('No session token available');
+        return;
+      }
+
       await fetch(`/api/insights/${id}`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+        },
         body: JSON.stringify({ is_read: true })
       });
-      
-      setInsights(insights.map(i => 
+
+      setInsights(insights.map(i =>
         i.id === id ? { ...i, is_read: true } : i
       ));
     } catch (error) {
@@ -123,13 +152,25 @@ export default function InsightsPage() {
 
   const handleDismiss = async (id: string) => {
     try {
+      // Get the current session token
+      const { supabase } = await import('@/lib/supabase/client');
+      const { data: { session } } = await supabase.auth.getSession();
+
+      if (!session?.access_token) {
+        console.error('No session token available');
+        return;
+      }
+
       await fetch(`/api/insights/${id}`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+        },
         body: JSON.stringify({ status: 'dismissed' })
       });
-      
-      setInsights(insights.map(i => 
+
+      setInsights(insights.map(i =>
         i.id === id ? { ...i, status: 'dismissed' } : i
       ));
     } catch (error) {
@@ -139,13 +180,25 @@ export default function InsightsPage() {
 
   const handleToggleStar = async (id: string, currentValue: boolean) => {
     try {
+      // Get the current session token
+      const { supabase } = await import('@/lib/supabase/client');
+      const { data: { session } } = await supabase.auth.getSession();
+
+      if (!session?.access_token) {
+        console.error('No session token available');
+        return;
+      }
+
       await fetch(`/api/insights/${id}`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+        },
         body: JSON.stringify({ is_starred: !currentValue })
       });
-      
-      setInsights(insights.map(i => 
+
+      setInsights(insights.map(i =>
         i.id === id ? { ...i, is_starred: !currentValue } : i
       ));
     } catch (error) {
