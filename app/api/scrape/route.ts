@@ -30,21 +30,21 @@ const platformConfigs = {
   lazada: {
     userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
     selectors: {
-      name: 'h1[class*="title"]',
-      price: 'span[class*="price"]',
-      sales: 'span[class*="sold"]',
-      rating: 'span[class*="rating"]',
-      reviews: 'span[class*="review"]'
+      name: 'h1.pdp-mod-product-badge-title, h1[class*="title"], .pdp-product-title h1, h1',
+      price: 'span.pdp-price_color_orange, span.pdp-v2-product-price-content-salePrice-amount, span.pdp-price, [data-qa-locator="product-price"], .pdp-price_color_orange, .pdp-price, span.price, .price, [class*="price"], span:contains("₫"), span:contains("VNĐ"), span:contains("VND")',
+      sales: 'span.pdp-sold-count, [data-qa-locator="product-sold-count"], .pdp-sold-count, span.sold-count, .item-sold-count, [class*="sold"], span:contains("đã bán"), span:contains("bán")',
+      rating: 'span.score-average, [data-qa-locator="product-rating"], .score-average, span.rating-score, .rating-score, [class*="rating"], span:contains("sao"), span:contains("⭐")',
+      reviews: 'span.count, [data-qa-locator="product-reviews-count"], .review-count, span.review-count, a[href*="reviews"] span, [class*="review"], span:contains("đánh giá"), span:contains("nhận xét")'
     }
   },
   tiki: {
     userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
     selectors: {
-      name: 'h1[class*="title"]',
-      price: 'div[class*="price"]',
-      sales: 'div[class*="sold"]',
-      rating: 'div[class*="rating"]',
-      reviews: 'div[class*="review"]'
+      name: 'h1.title',
+      price: '.product-price__current-price',
+      sales: '.sold-count',
+      rating: '.review-rating__point',
+      reviews: '.review-rating__total'
     }
   }
 };
@@ -162,12 +162,131 @@ async function scrapeViaHTML(url: string, platform: string) {
 
   const $ = cheerio.load(response.data);
 
-  // Extract data using selectors
-  const name = $(config.selectors.name).first().text().trim();
-  const priceText = $(config.selectors.price).first().text().trim();
-  const salesText = $(config.selectors.sales).first().text().trim();
-  const ratingText = $(config.selectors.rating).first().text().trim();
-  const reviewsText = $(config.selectors.reviews).first().text().trim();
+  // Debug: Log HTML content for Lazada
+  if (platform === 'lazada') {
+    console.log('=== LAZADA DEBUG START ===');
+    console.log('Lazada HTML response length:', response.data.length);
+    console.log('First 1000 chars of HTML:', response.data.substring(0, 1000));
+
+    // Look for JSON data in script tags
+    const scriptMatches = response.data.match(/<script[^>]*>(.*?)<\/script>/gis);
+    console.log('Found script tags:', scriptMatches?.length || 0);
+
+    if (scriptMatches) {
+      let foundData = false;
+      for (const script of scriptMatches.slice(0, 5)) { // Check first 5 scripts
+        if (script.includes('window.pageData') || script.includes('__moduleData__') || script.includes('pdpData') || script.includes('app.run')) {
+          console.log('Potential data script found, length:', script.length);
+          foundData = true;
+
+          // Try to extract JSON
+          const jsonMatches = script.match(/{[^}]*"price"[^}]*}/g);
+          if (jsonMatches) {
+            console.log('Found JSON with price:', jsonMatches.length);
+            for (const jsonStr of jsonMatches.slice(0, 2)) {
+              try {
+                const data = JSON.parse(jsonStr);
+                console.log('Parsed price data:', data);
+              } catch (e) {
+                console.log('Failed to parse JSON:', jsonStr.substring(0, 100));
+              }
+            }
+          }
+
+          // Look for specific patterns in the script
+          const pricePattern = script.match(/"price":\s*(\d+)/g);
+          if (pricePattern) console.log('Price patterns in script:', pricePattern);
+
+          const ratingPattern = script.match(/"rating":\s*([\d.]+)/g);
+          if (ratingPattern) console.log('Rating patterns in script:', ratingPattern);
+
+          const salesPattern = script.match(/"soldCount":\s*(\d+)/g);
+          if (salesPattern) console.log('Sales patterns in script:', salesPattern);
+        }
+      }
+      if (!foundData) {
+        console.log('No data scripts found in first 5 scripts');
+      }
+    }
+
+    // Look for price-related content in entire HTML
+    const priceMatches = response.data.match(/(\d[\d,.]*)(?:\s*₫|\s*VNĐ|\s*VND|\s*đ)/gi);
+    console.log('Price matches with currency found:', priceMatches?.slice(0, 3) || 'none');
+
+    // Look for rating-related content
+    const ratingMatches = response.data.match(/(\d+\.?\d*)\s*(?:sao|star|rating|⭐)/gi);
+    console.log('Rating matches found:', ratingMatches?.slice(0, 3) || 'none');
+
+    // Look for sales/review related content
+    const salesMatches = response.data.match(/(\d[\d,.]*)\s*(?:đã bán|sold|terjual|bán)/gi);
+    console.log('Sales matches found:', salesMatches?.slice(0, 3) || 'none');
+
+    // Look for review counts
+    const reviewMatches = response.data.match(/(\d[\d,.]*)\s*(?:đánh giá|reviews?|nhận xét|review)/gi);
+    console.log('Review matches found:', reviewMatches?.slice(0, 3) || 'none');
+
+    console.log('=== LAZADA DEBUG END ===');
+  }
+
+  // Extract data using selectors - try multiple selectors for each field
+  let name = '';
+  let priceText = '';
+  let salesText = '';
+  let ratingText = '';
+  let reviewsText = '';
+
+  // Extract name
+  name = $(config.selectors.name).first().text().trim();
+
+  // Extract price using multiple selectors
+  const priceSelectors = config.selectors.price.split(', ');
+  for (const selector of priceSelectors) {
+    const text = $(selector.trim()).first().text().trim();
+    if (text) {
+      priceText = text;
+      break;
+    }
+  }
+
+  // Extract sales using multiple selectors
+  const salesSelectors = config.selectors.sales.split(', ');
+  for (const selector of salesSelectors) {
+    const text = $(selector.trim()).first().text().trim();
+    if (text) {
+      salesText = text;
+      break;
+    }
+  }
+
+  // Extract rating using multiple selectors
+  const ratingSelectors = config.selectors.rating.split(', ');
+  for (const selector of ratingSelectors) {
+    const text = $(selector.trim()).first().text().trim();
+    if (text) {
+      ratingText = text;
+      break;
+    }
+  }
+
+  // Extract reviews using multiple selectors
+  const reviewsSelectors = config.selectors.reviews.split(', ');
+  for (const selector of reviewsSelectors) {
+    const text = $(selector.trim()).first().text().trim();
+    if (text) {
+      reviewsText = text;
+      break;
+    }
+  }
+
+  // Debug logging for Lazada
+  if (platform === 'lazada') {
+    console.log('Lazada scraping debug:');
+    console.log('Name:', name);
+    console.log('Price text:', priceText);
+    console.log('Sales text:', salesText);
+    console.log('Rating text:', ratingText);
+    console.log('Reviews text:', reviewsText);
+  }
 
   // Parse and clean data
   const price = parsePrice(priceText);

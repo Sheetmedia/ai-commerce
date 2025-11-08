@@ -10,14 +10,30 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    const supabase = createRouteHandlerClient({ cookies });
-
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    // Get the authorization header
+    const authHeader = request.headers.get('authorization')
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return NextResponse.json(
+        { error: 'No authorization token provided' },
+        { status: 401 }
+      )
     }
 
-    const { data: insight, error } = await supabase
+    const token = authHeader.substring(7) // Remove 'Bearer ' prefix
+
+    // Verify the JWT token and get user
+    const { supabaseAdmin } = await import('@/lib/supabase/server');
+    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token)
+
+    if (authError || !user) {
+      console.error('Auth error:', authError)
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
+
+    const { data: insight, error } = await supabaseAdmin
       .from('ai_insights')
       .select(`
         *,
@@ -31,7 +47,7 @@ export async function GET(
         )
       `)
       .eq('id', params.id)
-      .eq('user_id', session.user.id)
+      .eq('user_id', user.id)
       .single();
 
     if (error || !insight) {
@@ -61,11 +77,27 @@ export async function PATCH(
   { params }: { params: { id: string } }
 ) {
   try {
-    const supabase = createRouteHandlerClient({ cookies });
+    // Get the authorization header
+    const authHeader = request.headers.get('authorization')
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return NextResponse.json(
+        { error: 'No authorization token provided' },
+        { status: 401 }
+      )
+    }
 
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const token = authHeader.substring(7) // Remove 'Bearer ' prefix
+
+    // Verify the JWT token and get user
+    const { supabaseAdmin } = await import('@/lib/supabase/server');
+    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token)
+
+    if (authError || !user) {
+      console.error('Auth error:', authError)
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
     }
 
     const updates = await request.json();
@@ -96,11 +128,11 @@ export async function PATCH(
       updateData.actioned_at = new Date().toISOString();
     }
 
-    const { data: insight, error } = await supabase
+    const { data: insight, error } = await supabaseAdmin
       .from('ai_insights')
       .update(updateData)
       .eq('id', params.id)
-      .eq('user_id', session.user.id)
+      .eq('user_id', user.id)
       .select()
       .single();
 
@@ -133,18 +165,34 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
-    const supabase = createRouteHandlerClient({ cookies });
-
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    // Get the authorization header
+    const authHeader = request.headers.get('authorization')
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return NextResponse.json(
+        { error: 'No authorization token provided' },
+        { status: 401 }
+      )
     }
 
-    const { error } = await supabase
+    const token = authHeader.substring(7) // Remove 'Bearer ' prefix
+
+    // Verify the JWT token and get user
+    const { supabaseAdmin } = await import('@/lib/supabase/server');
+    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token)
+
+    if (authError || !user) {
+      console.error('Auth error:', authError)
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
+
+    const { error } = await supabaseAdmin
       .from('ai_insights')
       .delete()
       .eq('id', params.id)
-      .eq('user_id', session.user.id);
+      .eq('user_id', user.id);
 
     if (error) throw error;
 

@@ -6,6 +6,7 @@ import { useAuth } from '@/lib/providers/AuthProvider';
 import { ArrowLeft, ExternalLink, RefreshCw, Edit, Trash2, BarChart3, DollarSign, Users, Star, AlertCircle } from 'lucide-react';
 import Link from 'next/link';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { supabase } from '@/lib/supabase/client';
 
 interface Product {
   id: string;
@@ -33,6 +34,8 @@ export default function ProductDetailPage() {
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [analyzing, setAnalyzing] = useState(false);
+  const [analysis, setAnalysis] = useState<any>(null);
 
   const fetchProductDetails = useCallback(async () => {
     try {
@@ -103,6 +106,51 @@ export default function ProductDetailPage() {
       }
     } catch (error) {
       console.error('Error deleting product:', error);
+    }
+  };
+
+  const handleAnalyze = async () => {
+    if (!product) return;
+
+    setAnalyzing(true);
+    try {
+      // Get the JWT token from Supabase
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        console.error('No access token available');
+        return;
+      }
+
+      const response = await fetch('/api/ai/analyze', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          productId: product.id,
+          productData: {
+            name: product.product_name,
+            platform: product.platform,
+            price: product.current_price,
+            sales: product.current_sales,
+            rating: product.current_rating,
+            reviews: product.current_reviews,
+            category: product.category
+          }
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setAnalysis(data.analysis);
+      } else {
+        console.error('AI analysis failed');
+      }
+    } catch (error) {
+      console.error('Error analyzing product:', error);
+    } finally {
+      setAnalyzing(false);
     }
   };
 
@@ -299,13 +347,94 @@ export default function ProductDetailPage() {
               </div>
             </div>
 
-            {/* Placeholder for future features */}
+            {/* AI Analysis Section */}
             <div className="bg-white rounded-xl border border-gray-200 p-6">
-              <h2 className="text-lg font-semibold text-gray-900 mb-6">Price History</h2>
-              <div className="text-center py-12">
-                <BarChart3 className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                <p className="text-gray-600">Price history will be available soon</p>
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-lg font-semibold text-gray-900">AI Analysis</h2>
+                <button
+                  onClick={handleAnalyze}
+                  disabled={analyzing}
+                  className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-lg hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {analyzing ? (
+                    <>
+                      <RefreshCw className="w-5 h-5 animate-spin" />
+                      Analyzing...
+                    </>
+                  ) : (
+                    <>
+                      <BarChart3 className="w-5 h-5" />
+                      Analyze with AI
+                    </>
+                  )}
+                </button>
               </div>
+
+              {analysis && (
+                <div className="space-y-6">
+                  {/* Overall Score */}
+                  <div className="text-center">
+                    <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full mb-3">
+                      <span className="text-2xl font-bold text-white">{analysis.overall_score}</span>
+                    </div>
+                    <p className="text-sm text-gray-600">{analysis.summary}</p>
+                  </div>
+
+                  {/* Key Insights */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="p-4 bg-blue-50 rounded-lg">
+                      <h4 className="font-medium text-blue-900 mb-2">Pricing</h4>
+                      <p className="text-sm text-blue-700">{analysis.pricing.reasoning}</p>
+                      <div className="mt-2 text-xs text-blue-600">
+                        Recommended: {(analysis.pricing.recommended / 1000).toFixed(0)}K VNĐ
+                      </div>
+                    </div>
+                    <div className="p-4 bg-green-50 rounded-lg">
+                      <h4 className="font-medium text-green-900 mb-2">Performance</h4>
+                      <p className="text-sm text-green-700">{analysis.performance.reasoning}</p>
+                      <div className="mt-2 text-xs text-green-600">
+                        Sales: {analysis.performance.sales_score}/100 | Rating: {analysis.performance.rating_score}/100
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Action Items */}
+                  {analysis.action_items && analysis.action_items.length > 0 && (
+                    <div>
+                      <h4 className="font-medium text-gray-900 mb-3">Recommended Actions</h4>
+                      <div className="space-y-3">
+                        {analysis.action_items.slice(0, 3).map((item: any, index: number) => (
+                          <div key={index} className="p-4 bg-gray-50 rounded-lg">
+                            <div className="flex items-start justify-between mb-2">
+                              <h5 className="font-medium text-gray-900">{item.title}</h5>
+                              <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                item.priority === 'high' ? 'bg-red-100 text-red-800' :
+                                item.priority === 'medium' ? 'bg-yellow-100 text-yellow-800' :
+                                'bg-green-100 text-green-800'
+                              }`}>
+                                {item.priority}
+                              </span>
+                            </div>
+                            <p className="text-sm text-gray-600 mb-2">{item.description}</p>
+                            <div className="flex items-center gap-4 text-xs text-gray-500">
+                              <span>Impact: {item.estimated_impact}</span>
+                              <span>Effort: {item.effort}</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {!analysis && (
+                <div className="text-center py-12">
+                  <BarChart3 className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                  <p className="text-gray-600 mb-4">Get AI-powered insights for this product</p>
+                  <p className="text-sm text-gray-500">Analyze pricing, performance, and get actionable recommendations</p>
+                </div>
+              )}
             </div>
           </div>
 

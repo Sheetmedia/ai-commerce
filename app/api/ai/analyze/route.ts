@@ -15,10 +15,28 @@ export async function POST(request: NextRequest) {
   try {
     const supabase = createRouteHandlerClient({ cookies });
 
-    // Check authentication
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    // Get the authorization header
+    const authHeader = request.headers.get('authorization')
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return NextResponse.json(
+        { error: 'No authorization token provided' },
+        { status: 401 }
+      )
+    }
+
+    const token = authHeader.substring(7) // Remove 'Bearer ' prefix
+
+    // Decode JWT token to get user ID
+    let userId: string;
+    try {
+      const payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString());
+      userId = payload.sub;
+    } catch (decodeError) {
+      console.error('Error decoding JWT token:', decodeError);
+      return NextResponse.json(
+        { error: 'Invalid authorization token' },
+        { status: 401 }
+      );
     }
 
     const { productId, productData, competitors = [] } = await request.json();
@@ -34,7 +52,7 @@ export async function POST(request: NextRequest) {
     const { data: profile } = await supabase
       .from('profiles')
       .select('ai_queries_used_today, ai_queries_limit')
-      .eq('id', session.user.id)
+      .eq('id', userId)
       .single();
 
     if (profile && profile.ai_queries_used_today >= profile.ai_queries_limit) {
@@ -80,7 +98,7 @@ export async function POST(request: NextRequest) {
     if (productId) {
       for (const insight of insights) {
         await supabase.from('ai_insights').insert({
-          user_id: session.user.id,
+          user_id: userId,
           tracked_product_id: productId,
           ...insight
         });
@@ -89,7 +107,7 @@ export async function POST(request: NextRequest) {
 
     // Increment AI usage counter
     await supabase.rpc('increment_ai_usage', {
-      user_id: session.user.id
+      user_id: userId
     });
 
     return NextResponse.json({

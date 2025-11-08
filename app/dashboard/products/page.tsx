@@ -128,7 +128,11 @@ export default function ProductsPage() {
       });
 
       if (response.ok) {
+        // Remove from both products and filteredProducts
         setProducts(products.filter(p => p.id !== id));
+        setFilteredProducts(filteredProducts.filter(p => p.id !== id));
+      } else {
+        console.error('Failed to delete product');
       }
     } catch (error) {
       console.error('Error deleting product:', error);
