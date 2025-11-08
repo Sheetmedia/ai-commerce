@@ -112,7 +112,7 @@ export class ProductScraper {
 
       const $ = cheerio.load(html);
 
-      // Extract price - Lazada uses multiple price selectors
+      // Extract price - Lazada uses multiple price selectors, try all
       let price = null;
       const priceSelectors = [
         'span.pdp-price_color_orange',
@@ -120,15 +120,26 @@ export class ProductScraper {
         '[data-qa-locator="product-price"]',
         '.pdp-price_color_orange',
         '.pdp-price',
-        'span.price'
+        'span.price',
+        '.price--notranslate',
+        '[data-price]',
+        '.price-current',
+        // Additional selectors for different Lazada layouts
+        '.currency',
+        '.price',
+        '[data-testid="price"]',
+        '.product-price',
+        '.item-price'
       ];
 
       for (const selector of priceSelectors) {
         const priceText = $(selector).first().text().trim();
         if (priceText) {
-          const priceMatch = priceText.replace(/[^\d]/g, '');
+          // Handle Vietnamese currency formatting (₫ symbol and commas)
+          const cleanPrice = priceText.replace(/[₫,\s]/g, '');
+          const priceMatch = cleanPrice.match(/(\d+)/);
           if (priceMatch) {
-            price = parseInt(priceMatch);
+            price = parseInt(priceMatch[1]);
             break;
           }
         }
@@ -140,7 +151,15 @@ export class ProductScraper {
         'span.pdp-sold-count',
         '[data-qa-locator="product-sold-count"]',
         '.pdp-sold-count',
-        'span.sold-count'
+        'span.sold-count',
+        '.sold-count',
+        '[data-sold-count]',
+        '.item-sold',
+        // Additional selectors
+        '.sold',
+        '[data-testid="sold-count"]',
+        '.sales-count',
+        '.item-sold-count'
       ];
 
       for (const selector of salesSelectors) {
@@ -160,7 +179,15 @@ export class ProductScraper {
         'span.score-average',
         '[data-qa-locator="product-rating"]',
         '.score-average',
-        'span.rating-score'
+        'span.rating-score',
+        '.rating-score',
+        '[data-rating]',
+        '.star-rating',
+        // Additional selectors
+        '.rating',
+        '[data-testid="rating"]',
+        '.product-rating',
+        '.item-rating'
       ];
 
       for (const selector of ratingSelectors) {
@@ -180,7 +207,15 @@ export class ProductScraper {
         'span.count',
         '[data-qa-locator="product-reviews-count"]',
         '.review-count',
-        'span.review-count'
+        'span.review-count',
+        '.reviews-count',
+        '[data-reviews-count]',
+        '.review-total',
+        // Additional selectors
+        '.reviews',
+        '[data-testid="reviews-count"]',
+        '.product-reviews',
+        '.item-reviews'
       ];
 
       for (const selector of reviewsSelectors) {

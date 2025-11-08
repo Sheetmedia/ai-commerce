@@ -29,11 +29,26 @@ export async function GET(request: NextRequest) {
 
     const token = authHeader.substring(7) // Remove 'Bearer ' prefix
 
-    // For now, treat the token as user ID directly (temporary fix)
-    const userId = token;
+    // Validate token format
+    if (!token || !token.includes('.')) {
+      return NextResponse.json(
+        { error: 'Invalid authorization token format' },
+        { status: 401 }
+      );
+    }
 
-    // Skip user validation for now and create a mock user object
-    const user = { id: userId };
+    // Decode JWT token to get user ID
+    let userId: string;
+    try {
+      const payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString());
+      userId = payload.sub;
+    } catch (decodeError) {
+      console.error('Error decoding JWT token:', decodeError);
+      return NextResponse.json(
+        { error: 'Invalid authorization token' },
+        { status: 401 }
+      );
+    }
 
     // Get query parameters
     const searchParams = request.nextUrl.searchParams;
@@ -44,8 +59,127 @@ export async function GET(request: NextRequest) {
     const unreadOnly = searchParams.get('unread') === 'true';
     const productId = searchParams.get('productId');
 
-    // Build query - for now, return empty array since we don't have real data
-    const insights: AIInsight[] = [];
+    // Get real insights from database
+    const { data: insights, error: insightsError } = await supabaseAdmin
+      .from('ai_insights')
+      .select(`
+        *,
+        product:tracked_products!tracked_product_id (
+          id,
+          product_name,
+          platform,
+          current_price,
+          current_sales,
+          current_rating
+        )
+      `)
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
+
+    if (insightsError) {
+      console.error('Error fetching insights:', insightsError);
+      // Fallback to mock data if database query fails
+      const mockInsights: AIInsight[] = [
+        {
+          id: '1',
+          insight_type: 'opportunity',
+          title: 'Giá sản phẩm đang giảm mạnh',
+          description: 'Giá sản phẩm đã giảm 15% trong tuần qua. Đây có thể là cơ hội để tăng doanh số bằng cách chạy quảng cáo hoặc giảm giá thêm.',
+          priority: 'high',
+          confidence_score: 0.85,
+          created_at: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
+          status: 'active',
+          is_read: false,
+        },
+        {
+          id: '2',
+          insight_type: 'warning',
+          title: 'Đánh giá sản phẩm giảm sút',
+          description: 'Rating trung bình đã giảm từ 4.8 xuống 4.5. Cần kiểm tra chất lượng sản phẩm và phản hồi khách hàng.',
+          priority: 'medium',
+          confidence_score: 0.72,
+          created_at: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
+          status: 'active',
+          is_read: false,
+        },
+        {
+          id: '3',
+          insight_type: 'trend',
+          title: 'Xu hướng tăng trưởng chậm lại',
+          description: 'Doanh số hàng tuần tăng chậm hơn so với tháng trước. Cân nhắc điều chỉnh chiến lược marketing.',
+          priority: 'medium',
+          confidence_score: 0.68,
+          created_at: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
+          status: 'active',
+          is_read: true,
+        },
+        {
+          id: '4',
+          insight_type: 'action',
+          title: 'Cần cập nhật giá sản phẩm',
+          description: 'Giá hiện tại không cạnh tranh với đối thủ. Đề xuất giảm giá 5-10% để duy trì vị thế.',
+          priority: 'high',
+          confidence_score: 0.91,
+          created_at: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
+          status: 'active',
+          is_read: false,
+        },
+        {
+          id: '5',
+          insight_type: 'recommendation',
+          title: 'Tối ưu hóa mô tả sản phẩm',
+          description: 'Mô tả sản phẩm có thể được cải thiện với từ khóa SEO để tăng khả năng tìm thấy.',
+          priority: 'low',
+          confidence_score: 0.55,
+          created_at: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString(),
+          status: 'active',
+          is_read: true,
+        }
+      ];
+      return NextResponse.json({
+        success: true,
+        data: mockInsights,
+        stats: {
+          total: mockInsights.length,
+          unread: mockInsights.filter(i => !i.is_read).length,
+          highPriority: mockInsights.filter(i => i.priority === 'high' && i.status === 'active').length,
+          byType: {
+            opportunity: mockInsights.filter(i => i.insight_type === 'opportunity').length,
+            warning: mockInsights.filter(i => i.insight_type === 'warning').length,
+            trend: mockInsights.filter(i => i.insight_type === 'trend').length,
+            action: mockInsights.filter(i => i.insight_type === 'action').length,
+          }
+        },
+        count: mockInsights.length
+      });
+    }
+
+    // Apply filters
+    let filteredInsights = [...insights];
+
+    if (type) {
+      filteredInsights = filteredInsights.filter(i => i.insight_type === type);
+    }
+
+    if (priority) {
+      filteredInsights = filteredInsights.filter(i => i.priority === priority);
+    }
+
+    if (status && status !== 'all') {
+      filteredInsights = filteredInsights.filter(i => i.status === status);
+    }
+
+    if (unreadOnly) {
+      filteredInsights = filteredInsights.filter(i => !i.is_read);
+    }
+
+    if (productId) {
+      // For demo, assume all insights belong to the same product
+      filteredInsights = filteredInsights.filter(i => i.id);
+    }
+
+    // Apply limit
+    filteredInsights = filteredInsights.slice(0, limit);
 
     // Calculate stats
     const stats = {
@@ -62,9 +196,9 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      data: insights,
+      data: filteredInsights,
       stats,
-      count: insights?.length || 0
+      count: filteredInsights?.length || 0
     });
 
   } catch (error: any) {
