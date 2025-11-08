@@ -272,34 +272,6 @@ export function useProducts(): UseProductsReturn {
     deleteProduct,
     scrapeProduct,
   };
-  useEffect(() => {
-    fetchProducts();
-  }, [fetchProducts]);
-
-  // Refetch when filters change
-  useEffect(() => {
-    if (Object.keys(filters).length > 0) {
-      fetchProducts(1, initialLimit);
-    }
-  }, [filters, fetchProducts, initialLimit]);
-
-  return {
-    products,
-    loading,
-    error,
-    totalCount,
-    currentPage,
-    totalPages,
-    filters,
-    fetchProducts,
-    createProduct,
-    updateProduct,
-    deleteProduct,
-    scrapeProduct,
-    setFilters,
-    clearFilters,
-    refreshProducts,
-  };
 }
 
 export default useProducts;
