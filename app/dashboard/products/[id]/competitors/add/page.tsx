@@ -257,13 +257,13 @@ export default function AddCompetitorPage() {
 
           {/* Help Text */}
           <div className="mt-8 p-4 bg-blue-50 rounded-lg">
-            <h4 className="font-medium text-blue-900 mb-2">How it works:</h4>
-            <ul className="text-sm text-blue-700 space-y-1">
-              <li>• We'll scrape the competitor's product data automatically</li>
-              <li>• Data is updated every few hours to keep you informed</li>
-              <li>• Compare prices, sales, and ratings in real-time</li>
-              <li>• Get AI insights on competitive positioning</li>
-            </ul>
+              <h4 className="font-medium text-blue-900 mb-2">How it works:</h4>
+              <ul className="text-sm text-blue-700 space-y-1">
+                <li>• We&apos;ll scrape the competitor&apos;s product data automatically</li>
+                <li>• Data is updated every few hours to keep you informed</li>
+                <li>• Compare prices, sales, and ratings in real-time</li>
+                <li>• Get AI insights on competitive positioning</li>
+              </ul>
           </div>
         </div>
       </div>
