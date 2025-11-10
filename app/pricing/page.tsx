@@ -160,7 +160,7 @@ export default function PricingPage() {
               </h3>
               <p className="text-gray-600">
                 Yes, you can upgrade or downgrade your plan at any time. Changes take effect immediately,
-                and we&apos;ll prorate any charges.
+                and we will prorate any charges.
               </p>
             </div>
 

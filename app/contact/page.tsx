@@ -14,7 +14,7 @@ export default function ContactPage() {
           </h1>
           <p className="text-xl text-gray-600 max-w-3xl mx-auto">
             Have questions about our AI-powered e-commerce analytics platform?
-            We&apos;re here to help you succeed.
+            We are here to help you succeed.
           </p>
         </div>
 
